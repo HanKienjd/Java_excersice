@@ -6,22 +6,22 @@ public class Lesson3_Part1 {
         int height = input.nextInt();
         input.close();
 
-        //Xử lý vòng lặp 
-        // for(int x = 0; x < height; x++){
-            for(int i= 0; i <= height; i++){
-                for(int j = 0; j < height; j++){
-                    if(j <= height -i){
-                        System.out.print(" ");
-                    }
-                    else{
-                        System.out.print(i);
-                    }
+        //Xử lý ma trận  
+       for(int i = 1; i <= height; i++){
+           for(int j = 0; j <= 2* height; j++){
+                int x = j-height;
+                if(x < 0){
+                    x *= -1;// để x luôn dương 
                 }
-            }
-            // for(int j = height-1; j >0; j--){
-            //     System.out.print(j);
-            // }
-            System.out.println();
-        // }    
-        }
+                int output = i - x;
+                if(output > 0){
+                    System.out.printf("%2d", output);
+                }else{
+                    System.out.print("  ");
+                }
+           }
+           System.out.println();
+       }
+
+    }        
 }
