@@ -1,0 +1,234 @@
+
+// Account.java
+/*
+	The Account class is an abstract super class with the default
+	characteristics of a bank account. It maintains a balance and 
+	a current number of transactions.
+	There are default implementation for deposit(), withdraw(),
+	and endMonth() (prints out the end-month-summary). However
+	the endMongthFee() method is abstract, and so must 	be defined 
+	by each subclass.
+	This is a classic structure of using clever factoring to pull
+	common behavior up to the superclass.The resulting sublclasses 
+	are very thin.
+*/
+public abstract class Account {
+	
+	protected double balance; // protected = avaiable to subclasses
+	protected int transactions;
+	
+	public Account(double balance) {
+		this.balance = balance;
+		transactions = 0;
+		// NOTE can init vars in the ctor or where they are declared --
+		// I prefer in the ctor
+	}
+	
+	// Withdraw the given amount and count a transaction
+	public void withdraw(double amt) {
+		balance = balance - amt;
+		transactions++;
+	}
+	
+	// Deposit the given amount and count a transaction
+	public void deposit(double amt) {
+		balance = balance + amt;
+		transactions++;
+	}
+	
+	public double getBalance() {
+		return(balance);
+	}
+	
+	/*
+	Sent to the account at the end of the month so
+	it can settle fees and print a summary.
+	Relies on the endMonthCharge() method for
+	each class to implement its own charge policy.
+	Then does the common account printing and maintenance.
+	*/
+	public void endMonth() {
+		// 1. Pop down to the subclass for their
+		// specific charge policy (abstract method)
+		endMonthCharge();
+		
+		// 2. now the code common to all classes
+		// Get our RT class name -- just showing off
+		// some of Java's dynamic "reflection" stuff.
+		// (Never use a string like this for switch() logic.)
+		String myClassName = (getClass()).getName();
+		System.out.println("transactions:" + transactions +
+		"\t balance:" + balance + "\t(" + myClassName + ")");
+		transactions = 0;
+	}
+	
+	/*
+	Apply the end-of-month charge to the account.
+	This is "abstract" so subclasses must override
+	and provide a definition. At run time, this will
+	"pop down" to the subclass definition.
+	*/
+	protected abstract void endMonthCharge();
+		
+		//----
+		// Private stuff associated with the demo
+		//----
+		// Returns a random int in the range [0..bound-1]
+		// NOTE static method -- there is no reason for this
+		// to execute against a particular Account receiver --
+		// "balance", "transactions" are not relevant.
+		// (In Java 2, the Random class has a nextInt(n) method
+		// that does this, but it's not static.)
+	static int randomInt(int bound) {
+		double x = Math.random();
+		return ((int)(x * bound)); // uses double->int truncation
+	}
+	
+	// Return a new random account of a random type.
+	private static Account randomAccount() {
+		int pick = randomInt(3);
+		Account result = null;
+		
+		switch (pick) {
+			case 0: result = new Gambler(randomInt(100)); break;
+			case 1: result = new NickleNDime(randomInt(100)); break;
+			case 2: result = new Fee(randomInt(100)); break;
+		}
+		return(result);
+	}
+	
+	private static final int NUM_ACCOUNTS = 20;
+	
+	// Demo polymorphism across Accounts.
+	public static void main(String args[]) {
+		// 1. Build an array of assorted accounts
+		// This allocates the array, but NOT the Accounts
+		// (all the refs are initially null)
+		Account[] accounts = new Account[NUM_ACCOUNTS];
+		// Allocate all the Account objects.
+		for (int i = 0; i<accounts.length; i++) { // NOTE uses .length of array
+			accounts[i] = Account.randomAccount();
+		}
+		
+		// 2. Simulate a bunch of transactions
+		for (int day = 1; day<=31; day++) {
+			int accountNum = randomInt(accounts.length); // choose an account
+			if (randomInt(2) == 0) { // do something to that account
+				accounts[accountNum].withdraw(randomInt(100) + 1);//Polymorphism Yay!
+			}
+			else {
+			accounts[accountNum].deposit(randomInt(100) + 1);
+			}
+		}
+		
+		// 3. Have each account print its state
+		System.out.println("End of month summaries...");
+		for (int acct = 0; acct<accounts.length; acct++) {
+			accounts[acct].endMonth(); // Polymorphism Yay!
+		}
+	}
+// output
+/*
+	End of month summaries...
+	transactions:1 balance:-1.0 (Fee)
+	transactions:5 balance:-84.0 (NickleNDime)
+	transactions:2 balance:43.5 (NickleNDime)
+	...
+	transactions:1 balance:-71.0 (Gambler)
+	
+	transactions:2 balance:-175.0 (Gambler)
+	transactions:2 balance:-48.0 (Fee)
+*/
+};
+
+/*
+	Things to notice.
+	-Because the Account ctor takes an argument, all the subclasses need a 
+	ctor
+	so they can pass the right value up. Using default (zero-arg) ctors 
+	lessen
+	this constraint -- classes could define them or not.
+	-Suppose we want to forbid negative balance -- all the classes
+	"bottleneck" through withdraw(), so we just need to implement something
+	in that one place. Bottlenecking common code through one place is good.
+	-Note the "polymorphism" of the demo in Account.main(). It can
+	send Account obects deposit(), endMonth(), etc. messages and rely
+	on the receivers to do the right thing.
+	-Suppose we have a "vegas" behavior where a person withdraws 500, and
+	slightly later deposits(50). Could implement this up in Account..
+	
+	public void Vegas() {
+		withdraw(500);
+		// go lose 90% of the money
+		deposit(50);
+	}
+	Depending on the class of the receiver, it will do the right thing.
+	Exercise: trace the above on a Gambler object -- what is the sequence
+	of methods that execute?
+*/
+
+
+// Fee
+// An Account where there's a flat $5 fee per month.
+// Implements endMonth() to get the fee effect.
+class Fee extends Account {
+	public final double FEE = 5.00;
+	
+	public Fee(double balance) {
+		super(balance);
+	}
+	
+	public void endMonthCharge() {
+		withdraw(FEE);
+	}
+};
+
+// NickleNDime
+// An Acccount subclass where there's a $0.50 fee per transaction.
+// Implements endMonth() to get the effect.
+
+class NickleNDime extends Account {
+	public final double WITHDRAW_FEE = 0.50;
+	int withdrawCount;
+	public NickleNDime(double balance) {
+		super(balance);
+		withdrawCount = 0;;
+	}
+	
+	public void withdraw(double amount) {
+		super.withdraw(amount);
+		withdrawCount++;
+	}
+	
+	public void endMonthCharge() {
+		withdraw(withdrawCount * WITHDRAW_FEE);
+		withdrawCount = 0;
+	}
+};
+
+// Gambler
+// An Account where sometimes withdrawals deduct 0
+// and sometimes they deduct twice the amount. No end of month fee.
+// Has an empty implementation of endMonthCharge,
+// and overrides withdraw() to get the interesting effect.
+
+class Gambler extends Account {
+	public final double PAY_ODDS = 0.51;
+	public Gambler(double balance) {
+		super(balance);
+	}
+	public void withdraw(double amt) {
+		if (Math.random()<= PAY_ODDS) {
+			super.withdraw(2 * amt); // D'oh! (note the classic
+			// use of "super" to chain up)
+		}
+		else {
+			super.withdraw(0.0); // withdraw 0, so the transaction still gets
+								 //counted
+		}
+	}
+	
+	public void endMonthCharge() {
+	// ha ha, we don't get charged anything!
+	}
+};
